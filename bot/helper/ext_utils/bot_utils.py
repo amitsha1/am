@@ -115,8 +115,8 @@ def get_progress_bar_string(pct):
     pct = float(pct.strip('%'))
     p = min(max(pct, 0), 100)
     cFull = int(p // 10)
-    p_str = '■' * cFull
-    p_str += '□' * (10 - cFull)
+    p_str = '▰' * cFull
+    p_str += '▱' * (10 - cFull)
     return f"[{p_str}]"
 
 
@@ -137,22 +137,22 @@ def get_readable_message():
             msg += f"<code>{escape(f'{download.name()}')}</code>"
         if download.status() not in [MirrorStatus.STATUS_SPLITTING, MirrorStatus.STATUS_SEEDING]:
             msg += f"\n{get_progress_bar_string(download.progress())} {download.progress()}"
-            msg += f"\n<b>Speed: </b>{download.speed()}"
-            msg += f"\n<b>Done: </b>{download.processed_bytes()} of {download.size()}"
-            msg += f"\n<b>ETA: </b>{download.eta()} <b>| Elapsed: </b>{get_readable_time(time() - download.message.date.timestamp())}"
-            msg += f"\n<b>Engine: </b>{download.engine}"
-            msg += f"\n<b>User: </b>{download.message.from_user.mention(style='html')} | <b>ID: </b><code>{download.message.from_user.id}</code>"
+            msg += f"\n<b>🚀 Speed: </b>{download.speed()}"
+            msg += f"\n<b>⍟ Done: </b>{download.processed_bytes()} of {download.size()}"
+            msg += f"\n<b>🕓 ETA: </b>{download.eta()} <b>|🜛 Elapsed: </b>{get_readable_time(time() - download.message.date.timestamp())}"
+            msg += f"\n<b>✇ Engine: </b>{download.engine}"
+            msg += f"\n<b>⌼ User: </b>{download.message.from_user.mention(style='html')} | <b>ℹ ID: </b><code>{download.message.from_user.id}</code>"
             if hasattr(download, 'seeders_num'):
                 try:
-                    msg += f"\n<b>Seeders:</b> {download.seeders_num()} | <b>Leechers:</b> {download.leechers_num()}"
+                    msg += f"\n<b>⥿ Seeders:</b> {download.seeders_num()} | <b>☍ Leechers:</b> {download.leechers_num()}"
                 except:
                     pass
         elif download.status() == MirrorStatus.STATUS_SEEDING:
-            msg += f"\n<b>Size: </b>{download.size()}"
-            msg += f"\n<b>Speed: </b>{download.upload_speed()}"
-            msg += f" | <b>Uploaded: </b>{download.uploaded_bytes()}"
-            msg += f"\n<b>Ratio: </b>{download.ratio()}"
-            msg += f" | <b>Time: </b>{download.seeding_time()}"
+            msg += f"\n<b>🗃Size: </b>{download.size()}"
+            msg += f"\n<b>🚀Speed: </b>{download.upload_speed()}"
+            msg += f" | <b>📤Uploaded: </b>{download.uploaded_bytes()}"
+            msg += f"\n<b>🝋 Ratio: </b>{download.ratio()}"
+            msg += f" | <b>🕓Time: </b>{download.seeding_time()}"
         else:
             msg += f"\n<b>Size: </b>{download.size()}"
         msg += f"\n<b>Stop: </b><code>/{BotCommands.CancelMirror} {download.gid()}</code>\n\n"
@@ -162,13 +162,13 @@ def get_readable_message():
     up_speed = 0
     for download in download_dict.values():
         tstatus = download.status()
-        if tstatus == MirrorStatus.STATUS_DOWNLOADING:
+        if tstatus == MirrorStatus.📥STATUS_DOWNLOADING:
             spd = download.speed()
             if 'K' in spd:
                 dl_speed += float(spd.split('K')[0]) * 1024
             elif 'M' in spd:
                 dl_speed += float(spd.split('M')[0]) * 1048576
-        elif tstatus == MirrorStatus.STATUS_UPLOADING:
+        elif tstatus == MirrorStatus.📤STATUS_UPLOADING:
             spd = download.speed()
             if 'K' in spd:
                 up_speed += float(spd.split('K')[0]) * 1024
@@ -181,9 +181,9 @@ def get_readable_message():
             elif 'M' in spd:
                 up_speed += float(spd.split('M')[0]) * 1048576
     buttons = ButtonMaker()
-    buttons.ubutton(f"Repo", f"https://github.com/SN-Abdullah-Al-Noman/Atrocious_Mirror")
+    buttons.ubutton(f"Owner", f"https://t.me/metaverseiam")
     buttons.ibutton("Refresh", "status ref")
-    buttons.ubutton(f"Group", f"https://t.me/+yw0A-x4cYBphZmJl")
+    buttons.ubutton(f"Repo", f"https://github.com/amitsha1/am")
     button = buttons.build_menu(3)
     if tasks > STATUS_LIMIT:
         buttons = ButtonMaker()
