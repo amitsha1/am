@@ -162,13 +162,13 @@ def get_readable_message():
     up_speed = 0
     for download in download_dict.values():
         tstatus = download.status()
-        if tstatus == MirrorStatus.📥STATUS_DOWNLOADING:
+        if tstatus == MirrorStatus.STATUS_DOWNLOADING:
             spd = download.speed()
             if 'K' in spd:
                 dl_speed += float(spd.split('K')[0]) * 1024
             elif 'M' in spd:
                 dl_speed += float(spd.split('M')[0]) * 1048576
-        elif tstatus == MirrorStatus.📤STATUS_UPLOADING:
+        elif tstatus == MirrorStatus.STATUS_UPLOADING:
             spd = download.speed()
             if 'K' in spd:
                 up_speed += float(spd.split('K')[0]) * 1024
@@ -194,11 +194,11 @@ def get_readable_message():
     if config_dict['BOT_MAX_TASKS']:
         TASKS_COUNT = f"<b>Task Limit: </b>{config_dict['BOT_MAX_TASKS']} | <b>Run:</b> {len(download_dict)} | <b>Free:</b> {config_dict['BOT_MAX_TASKS'] - len(download_dict)}\n"
     else:
-        TASKS_COUNT = f"<b>Tasks Running:</b> {len(download_dict)}\n"
+        TASKS_COUNT = f"<b>🗃Tasks Running:</b> {len(download_dict)}\n"
     msg += f"{TASKS_COUNT}"
-    msg += f"<b>CPU:</b> {cpu_percent()}% | <b>FREE:</b> {get_readable_file_size(disk_usage(config_dict['DOWNLOAD_DIR']).free)}"
-    msg += f"\n<b>RAM:</b> {virtual_memory().percent}% | <b>UP:</b> {get_readable_time(time() - botStartTime)}"
-    msg += f"\n<b>DL:</b> {get_readable_file_size(dl_speed)}/s | <b>UL:</b> {get_readable_file_size(up_speed)}/s"
+    msg += f"<b>✇ CPU:</b> {cpu_percent()}% | <b>⌹ FREE:</b> {get_readable_file_size(disk_usage(config_dict['DOWNLOAD_DIR']).free)}"
+    msg += f"\n<b>❆ RAM:</b> {virtual_memory().percent}% | <b>⏱ UP:</b> {get_readable_time(time() - botStartTime)}"
+    msg += f"\n<b>📥 DL:</b> {get_readable_file_size(dl_speed)}/s | <b>📤 UL:</b> {get_readable_file_size(up_speed)}/s"
     return msg, button
 
 
