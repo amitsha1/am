@@ -131,7 +131,7 @@ def get_readable_message():
         globals()['PAGE_NO'] = PAGES
     for download in list(download_dict.values())[STATUS_START:STATUS_LIMIT+STATUS_START]:
         if config_dict['SAFE_MODE']:
-            msg += f"<b>{download.status()}: </b>Safe Mode Enabled"
+            msg += f"<b>{download.status()}: </b>Task is running in privacy"
         else:
             msg += f"<b><a href='{download.message.link}'>{download.status()}</a>: </b>"
             msg += f"<code>{escape(f'{download.name()}')}</code>"
@@ -139,12 +139,12 @@ def get_readable_message():
             msg += f"\n{get_progress_bar_string(download.progress())} {download.progress()}"
             msg += f"\n<b>┎ 🚀 Speed: </b>{download.speed()}"
             msg += f"\n<b>┠ ⍟ Done: </b>{download.processed_bytes()} of {download.size()}"
-            msg += f"\n<b>┠ ⌥ ETA: </b>{download.eta()} <b>       ┃ 🜛 Elapsed: </b>{get_readable_time(time() - download.message.date.timestamp())}"
+            msg += f"\n<b>┠ ⌥ ETA: </b>{download.eta()} <b> ┃ 🜛 Elapsed: </b>{get_readable_time(time() - download.message.date.timestamp())}"
             msg += f"\n<b>┠ ✇ Engine: </b>{download.engine}"
             msg += f"\n<b>┠ ⌼ User: </b>{download.message.from_user.mention(style='html')} ┃ <b>☃ ID: </b><code>{download.message.from_user.id}</code>"
             if hasattr(download, 'seeders_num'):
                 try:
-                    msg += f"\n<b>┠ ⥿ Seeders:</b> {download.seeders_num()}      ┃ <b>☍ Leechers:</b> {download.leechers_num()}"
+                    msg += f"\n<b>┠ ⥿ Seeders:</b> {download.seeders_num()}   ┃ <b>☍ Leechers:</b> {download.leechers_num()}"
                 except:
                     pass
         elif download.status() == MirrorStatus.STATUS_SEEDING:
