@@ -139,18 +139,18 @@ def get_readable_message():
             msg += f"\n{get_progress_bar_string(download.progress())} {download.progress()}"
             msg += f"\n<b>┎ 🚀 Speed: </b>{download.speed()}"
             msg += f"\n<b>┠ ⍟ Done: </b>{download.processed_bytes()} of {download.size()}"
-            msg += f"\n<b>┠ ⌥ ETA: </b>{download.eta()} <b> ┃ 🜛 Elapsed: </b>{get_readable_time(time() - download.message.date.timestamp())}"
+            msg += f"\n<b>┠ ⌥ ETA: </b>{download.eta()} <b> ┠ 🜛 Elapsed: </b>{get_readable_time(time() - download.message.date.timestamp())}"
             msg += f"\n<b>┠ ✇ Engine: </b>{download.engine}"
-            msg += f"\n<b>┠ ⌼ User: </b>{download.message.from_user.mention(style='html')} ┃ <b>☃ ID: </b><code>{download.message.from_user.id}</code>"
+            msg += f"\n<b>┠ ⌼ User: </b>{download.message.from_user.mention(style='html')} ┠ <b>☃ ID: </b><code>{download.message.from_user.id}</code>"
             if hasattr(download, 'seeders_num'):
                 try:
-                    msg += f"\n<b>┠ ⥿ Seeders:</b> {download.seeders_num()}   ┃ <b>☍ Leechers:</b> {download.leechers_num()}"
+                    msg += f"\n<b>┠ ⥿ Seeders:</b> {download.seeders_num()}   ┠ <b>☍ Leechers:</b> {download.leechers_num()}"
                 except:
                     pass
         elif download.status() == MirrorStatus.STATUS_SEEDING:
             msg += f"\n<b>┎ 🗃Size: </b>{download.size()}"
             msg += f"\n<b>┠ 🚀Speed: </b>{download.upload_speed()}"
-            msg += f" | <b>┠ ︽ Uploaded: </b>{download.uploaded_bytes()}"
+            msg += f" | <b>┠ ⥣ Uploaded: </b>{download.uploaded_bytes()}"
             msg += f"\n<b>┠ 🝋 Ratio: </b>{download.ratio()}"
             msg += f" | <b>┠ 🜛 Time: </b>{download.seeding_time()}"
         else:
@@ -196,9 +196,9 @@ def get_readable_message():
     else:
         TASKS_COUNT = f"<b>┎🗃Tasks Running:</b> {len(download_dict)}\n"
     msg += f"{TASKS_COUNT}"
-    msg += f"<b>┠ ✇ CPU:</b> {cpu_percent()}%    | <b>⌹ FREE:</b> {get_readable_file_size(disk_usage(config_dict['DOWNLOAD_DIR']).free)}"
-    msg += f"\n<b>┠ ❆ RAM:</b> {virtual_memory().percent}%  | <b>🝋 UP:</b> {get_readable_time(time() - botStartTime)}"
-    msg += f"\n<b>┖ ︾ DL:</b> {get_readable_file_size(dl_speed)}/s | <b>︽ UL:</b> {get_readable_file_size(up_speed)}/s"
+    msg += f"<b>┠ ✇ CPU:</b> {cpu_percent()}%    ┠ <b>⌹ FREE:</b> {get_readable_file_size(disk_usage(config_dict['DOWNLOAD_DIR']).free)}"
+    msg += f"\n<b>┠ ❆ RAM:</b> {virtual_memory().percent}%  ┠ <b>🝋 UP:</b> {get_readable_time(time() - botStartTime)}"
+    msg += f"\n<b>┖ ⥥ DL:</b> {get_readable_file_size(dl_speed)}/s ┠ <b> ⥣ UL:</b> {get_readable_file_size(up_speed)}/s"
     return msg, button
 
 
