@@ -8,8 +8,8 @@ from asyncio import create_subprocess_exec, sleep, Event
 
 from bot import Interval, aria2, DOWNLOAD_DIR, download_dict, download_dict_lock, LOGGER, DATABASE_URL, \
     MAX_SPLIT_SIZE, config_dict, status_reply_dict_lock, user_data, non_queued_up, non_queued_dl, queued_up, \
-    queued_dl, queue_dict_lock, GLOBAL_EXTENSION_FILTER
-from bot.helper.ext_utils.bot_utils import sync_to_async, get_readable_file_size, is_gdrive_id
+    queued_dl, queue_dict_lock, GLOBAL_EXTENSION_FILTER, bot_name, OWNER_ID
+from bot.helper.ext_utils.bot_utils import sync_to_async, get_readable_file_size, get_index_url
 from bot.helper.ext_utils.fs_utils import get_base_name, get_path_size, clean_download, clean_target, \
     is_first_archive_split, is_archive, is_archive_split, join_files
 from bot.helper.ext_utils.leech_utils import split_file
@@ -22,37 +22,36 @@ from bot.helper.mirror_utils.status_utils.gdrive_status import GdriveStatus
 from bot.helper.mirror_utils.status_utils.telegram_status import TelegramStatus
 from bot.helper.mirror_utils.status_utils.rclone_status import RcloneStatus
 from bot.helper.mirror_utils.status_utils.queue_status import QueueStatus
-from bot.helper.mirror_utils.gdrive_utlis.upload import gdUpload
+from bot.helper.mirror_utils.upload_utils.gdriveTools import GoogleDriveHelper
 from bot.helper.mirror_utils.upload_utils.pyrogramEngine import TgUploader
 from bot.helper.mirror_utils.rclone_utils.transfer import RcloneTransferHelper
-from bot.helper.telegram_helper.message_utils import sendMessage, delete_all_messages, update_all_messages
+from bot.helper.telegram_helper.message_utils import sendMessage, delete_all_messages, update_all_messages, send_to_pm, send_to_log_chat
 from bot.helper.telegram_helper.button_build import ButtonMaker
 from bot.helper.ext_utils.db_handler import DbManger
 
 
 class MirrorLeechListener:
-    def __init__(self, message, compress=False, extract=False, isQbit=False, isLeech=False, tag=None, select=False, seed=False, sameDir=None, rcFlags=None, upDest=None, join=False):
+    def __init__(self, message, compress=False, extract=False, isQbit=False, isLeech=False, tag=None, select=False, seed=False, sameDir=None, rcFlags=None, upPath=None, isClone=False, join=False):
         if sameDir is None:
             sameDir = {}
         self.message = message
-        self.uid = self.message.id
+        self.uid = message.id
         self.extract = extract
         self.compress = compress
         self.isQbit = isQbit
         self.isLeech = isLeech
+        self.isClone = isClone
         self.tag = tag
         self.seed = seed
         self.newDir = ""
         self.dir = f"{DOWNLOAD_DIR}{self.uid}"
         self.select = select
-        self.isSuperGroup = self.message.chat.type.name in ['SUPERGROUP', 'CHANNEL']
+        self.isSuperGroup = message.chat.type.name in ['SUPERGROUP', 'CHANNEL']
         self.suproc = None
         self.sameDir = sameDir
         self.rcFlags = rcFlags
-        self.upDest = upDest
+        self.upPath = upPath
         self.join = join
-        self.user_id = self.message.from_user.id
-        self.user_dict = user_data.get(self.user_id, {})
 
     async def clean(self):
         try:
@@ -122,6 +121,7 @@ class MirrorLeechListener:
             if self.uid in non_queued_dl:
                 non_queued_dl.remove(self.uid)
         await start_from_queued()
+        user_dict = user_data.get(self.message.from_user.id, {})
 
         if self.join and await aiopath.isdir(dl_path):
             await join_files(dl_path)
@@ -211,7 +211,7 @@ class MirrorLeechListener:
                 up_path = f"{dl_path}.zip"
             async with download_dict_lock:
                 download_dict[self.uid] = ZipStatus(name, size, gid, self)
-            LEECH_SPLIT_SIZE = self.user_dict.get(
+            LEECH_SPLIT_SIZE = user_dict.get(
                 'split_size', False) or config_dict['LEECH_SPLIT_SIZE']
             cmd = ["7z", f"-v{LEECH_SPLIT_SIZE}b", "a",
                    "-mx=0", f"-p{pswd}", up_path, dl_path]
@@ -247,7 +247,7 @@ class MirrorLeechListener:
             o_files = []
             if not self.compress:
                 checked = False
-                LEECH_SPLIT_SIZE = self.user_dict.get(
+                LEECH_SPLIT_SIZE = user_dict.get(
                     'split_size', False) or config_dict['LEECH_SPLIT_SIZE']
                 for dirpath, _, files in await sync_to_async(walk, up_dir, topdown=False):
                     for file_ in files:
@@ -314,15 +314,15 @@ class MirrorLeechListener:
                 download_dict[self.uid] = tg_upload_status
             await update_all_messages()
             await tg.upload(o_files, m_size, size)
-        elif is_gdrive_id(self.upDest):
+        elif self.upPath == 'gd':
             size = await get_path_size(up_path)
             LOGGER.info(f"Upload Name: {up_name}")
-            drive = gdUpload(up_name, up_dir, self)
+            drive = GoogleDriveHelper(up_name, up_dir, self, user_id=self.message.from_user.id)
             upload_status = GdriveStatus(drive, size, self.message, gid, 'up')
             async with download_dict_lock:
                 download_dict[self.uid] = upload_status
             await update_all_messages()
-            await sync_to_async(drive.upload, size)
+            await sync_to_async(drive.upload, up_name, size)
         else:
             size = await get_path_size(up_path)
             LOGGER.info(f"Upload Name: {up_name}")
@@ -333,18 +333,25 @@ class MirrorLeechListener:
             await update_all_messages()
             await RCTransfer.upload(up_path, size)
 
-    async def onUploadComplete(self, link, size, files, folders, mime_type, name, rclonePath='', dir_id='', private=False):
+    async def onUploadComplete(self, link, size, files, folders, mime_type, name, rclonePath=''):
+        INDEX_URL = get_index_url(user_id=self.message.from_user.id)
         if self.isSuperGroup and config_dict['INCOMPLETE_TASK_NOTIFIER'] and DATABASE_URL:
             await DbManger().rm_complete_task(self.message.link)
-        msg = f"<b>Name: </b><code>{escape(name)}</code>\n\n<b>Size: </b>{get_readable_file_size(size)}"
+        if config_dict['SAFE_MODE']:
+            gpmsg = f"<b>Name: </b>Safe Mode Enabled"
+        else:
+            gpmsg = f"<b>Name: </b><code>{escape(name)}</code>"
+        bpmsg = f"<b>Name: </b><code>{escape(name)}</code>"
+        msg = f'\n\n<b>• Size: </b>{get_readable_file_size(size)}'
         LOGGER.info(f'Task Done: {name}')
         if self.isLeech:
-            msg += f'\n<b>Total Files: </b>{folders}'
+            msg += f'\n<b>• Total Files: </b>{folders}'
             if mime_type != 0:
-                msg += f'\n<b>Corrupted Files: </b>{mime_type}'
-            msg += f'\n<b>cc: </b>{self.tag}\n\n'
+                msg += f'\n<b>• Corrupted Files: </b>{mime_type}'
+            msg += f'\n\n<b>• User: </b>{self.tag}'
+            msg += f'\n<b>• User ID: </b> <code>{self.message.from_user.id}</code>\n\n'
             if not files:
-                await sendMessage(self.message, msg)
+                await sendMessage(self.message, gpmsg + msg)
             else:
                 fmsg = ''
                 for index, (link, name) in enumerate(files.items(), start=1):
@@ -354,7 +361,13 @@ class MirrorLeechListener:
                         await sleep(1)
                         fmsg = ''
                 if fmsg != '':
-                    await sendMessage(self.message, msg + fmsg)
+                    if config_dict['BOT_PM'] and self.message.chat.type != self.message.chat.type.PRIVATE:
+                        lbpmsg = f'\n<b>Files has been sent in private.</b>'
+                        bot_pm_button = ButtonMaker()
+                        bot_pm_button.ubutton("📥 Click Here To Go Bot PM", f"https://t.me/{bot_name}")
+                        await sendMessage(self.message, gpmsg + msg + fmsg + lbpmsg, bot_pm_button.build_menu(1))
+                    else:
+                        await sendMessage(self.message, gpmsg + msg + fmsg)
             if self.seed:
                 if self.newDir:
                     await clean_target(self.newDir)
@@ -364,41 +377,54 @@ class MirrorLeechListener:
                 await start_from_queued()
                 return
         else:
-            msg += f'\n\n<b>Type: </b>{mime_type}'
+            msg += f'\n<b>• Type: </b>{mime_type}'
             if mime_type == "Folder":
-                msg += f'\n<b>SubFolders: </b>{folders}'
-                msg += f'\n<b>Files: </b>{files}'
-            if link or rclonePath and config_dict['RCLONE_SERVE_URL'] and not private:
+                msg += f'\n<b>• SubFolders: </b>{folders}'
+                msg += f'\n<b>• Files: </b>{files}'
+            if link or rclonePath and config_dict['RCLONE_SERVE_URL']:
                 buttons = ButtonMaker()
                 if link:
-                    buttons.ubutton("☁️ Cloud Link", link)
+                    if config_dict['DISABLE_DRIVE_LINK']:
+                        if self.message.from_user.id == OWNER_ID and self.message.chat.type == self.message.chat.type.PRIVATE: 
+                            buttons.ubutton("☁️ Drive Link", link)
+                        else:
+                            pass
+                    else:
+                        buttons.ubutton("☁️ Drive Link", link)
                 else:
-                    msg += f'\n\nPath: <code>{rclonePath}</code>'
-                if rclonePath and (RCLONE_SERVE_URL := config_dict['RCLONE_SERVE_URL']) and not private:
+                    msg += f'\n\n• Path: <code>{rclonePath}</code>'
+                if rclonePath and (RCLONE_SERVE_URL := config_dict['RCLONE_SERVE_URL']):
                     remote, path = rclonePath.split(':', 1)
                     url_path = rutils.quote(f'{path}')
                     share_url = f'{RCLONE_SERVE_URL}/{remote}/{url_path}'
                     if mime_type == "Folder":
                         share_url += '/'
                     buttons.ubutton("🔗 Rclone Link", share_url)
-                if not rclonePath and dir_id:
-                    INDEX_URL = ''
-                    if private:
-                        INDEX_URL = self.user_dict['index_url'] if self.user_dict.get('index_url') else ''
-                    elif config_dict['INDEX_URL']:
-                        INDEX_URL = config_dict['INDEX_URL']
-                    if INDEX_URL:
-                        share_url = f'{INDEX_URL}findpath?id={dir_id}'
+                elif INDEX_URL and not rclonePath:
+                    url_path = rutils.quote(f'{name}')
+                    share_url = f'{INDEX_URL}/{url_path}'
+                    if mime_type == "Folder":
+                        share_url += '/'
                         buttons.ubutton("⚡ Index Link", share_url)
-                        if mime_type.startswith(('image', 'video', 'audio')):
-                            share_urls = f'{INDEX_URL}findpath?id={dir_id}&view=true'
-                            buttons.ubutton("🌐 View Link", share_urls)
+                    else:
+                        buttons.ubutton("⚡ Index Link", share_url)
                 button = buttons.build_menu(2)
             else:
-                msg += f'\n\nPath: <code>{rclonePath}</code>'
+                msg += f'\n\n• Path: <code>{rclonePath}</code>'
                 button = None
-            msg += f'\n\n<b>cc: </b>{self.tag}'
-            await sendMessage(self.message, msg, button)
+            msg += f'\n\n<b>• User: </b>{self.tag}'
+            msg += f'\n<b>• User ID: </b> <code>{self.message.from_user.id}</code>'
+            if config_dict['BOT_PM']:
+                bmsg = f'\n\n<b>Links has been sent in private.</b>'
+                bot_pm_button = ButtonMaker()
+                bot_pm_button.ubutton("📥 Click Here To Go Bot PM", f"https://t.me/{bot_name}")
+                await send_to_pm(self.message, bpmsg + msg, button)
+                if self.message.chat.type != self.message.chat.type.PRIVATE:
+                    await sendMessage(self.message, gpmsg + msg + bmsg, bot_pm_button.build_menu(1))
+            else:
+                await sendMessage(self.message, gpmsg + msg, button)
+            if config_dict['LOG_CHAT_ID']:
+                await send_to_log_chat(self.message, bpmsg + msg, button)
             if self.seed:
                 if self.newDir:
                     await clean_target(self.newDir)
